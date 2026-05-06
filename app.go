@@ -181,12 +181,9 @@ func findFFmpeg() (ffmpeg, ffprobe string) {
 			return ff, fp
 		}
 	}
-	home := os.Getenv("USERPROFILE")
-	local := os.Getenv("LOCALAPPDATA")
 	candidates := []string{
-		filepath.Join(home, `Desktop\ComfyUI_windows_portable\python_embeded`),
-		filepath.Join(local, `CapCut\Apps\8.1.1.3417`),
 		`C:\Program Files\ffmpeg\bin`,
+		`C:\Program Files (x86)\ffmpeg\bin`,
 		`C:\ffmpeg\bin`,
 	}
 	for _, dir := range candidates {
@@ -260,14 +257,28 @@ func (a *App) btbnZipURL() (string, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
 		return "", fmt.Errorf("parse API response: %w", err)
 	}
+	// Pick win64 LGPL static (non-shared) zip.
+	// Prefer the latest stable release (ffmpeg-nX.Y-…) over the rolling master build.
+	// Iterating in asset order means the last stable match is the highest version.
+	var stable, master string
 	for _, a := range release.Assets {
 		n := strings.ToLower(a.Name)
 		if strings.Contains(n, "win64") && strings.Contains(n, "lgpl") &&
-			strings.Contains(n, "essentials") && strings.HasSuffix(n, ".zip") {
-			return a.BrowserDownloadURL, nil
+			!strings.Contains(n, "shared") && strings.HasSuffix(n, ".zip") {
+			if strings.Contains(n, "master") {
+				master = a.BrowserDownloadURL
+			} else {
+				stable = a.BrowserDownloadURL // last stable entry = highest version
+			}
 		}
 	}
-	return "", fmt.Errorf("no win64-lgpl-essentials build found in latest BtbN release")
+	if stable != "" {
+		return stable, nil
+	}
+	if master != "" {
+		return master, nil
+	}
+	return "", fmt.Errorf("no compatible win64-lgpl build found in latest BtbN release")
 }
 
 // DownloadFFmpeg fetches a minimal static build from BtbN and caches it in

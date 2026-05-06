@@ -37,9 +37,8 @@ The app checks these locations in order before prompting to download:
 ```
 PATH (system-wide)
 %APPDATA%\steam-showcase-maker\bin\  ← app's own download cache
-%USERPROFILE%\Desktop\ComfyUI_windows_portable\python_embeded\
-%LOCALAPPDATA%\CapCut\Apps\8.1.1.3417\
 C:\Program Files\ffmpeg\bin\
+C:\Program Files (x86)\ffmpeg\bin\
 C:\ffmpeg\bin\
 ```
 
