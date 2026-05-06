@@ -1,0 +1,23 @@
+# Build output
+build/bin/
+
+# Wails build cache
+frontend/package.json.md5
+
+# Frontend
+frontend/dist/
+frontend/node_modules/
+
+# Dev temp
+*.log
+*.tmp
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/settings.json
+.idea/
+*.swp
