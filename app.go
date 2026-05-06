@@ -231,12 +231,49 @@ func (a *App) BrowseForFFmpeg() (string, error) {
 	return path, nil
 }
 
+// btbnZipURL queries the GitHub API for the latest BtbN release and returns
+// the browser_download_url for the win64-lgpl-essentials ZIP.
+func (a *App) btbnZipURL() (string, error) {
+	const api = "https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/latest"
+	req, err := http.NewRequestWithContext(a.ctx, http.MethodGet, api, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("User-Agent", "steam-showcase-maker")
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("GitHub API unreachable: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("GitHub API returned HTTP %d", resp.StatusCode)
+	}
+
+	var release struct {
+		Assets []struct {
+			Name               string `json:"name"`
+			BrowserDownloadURL string `json:"browser_download_url"`
+		} `json:"assets"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+		return "", fmt.Errorf("parse API response: %w", err)
+	}
+	for _, a := range release.Assets {
+		n := strings.ToLower(a.Name)
+		if strings.Contains(n, "win64") && strings.Contains(n, "lgpl") &&
+			strings.Contains(n, "essentials") && strings.HasSuffix(n, ".zip") {
+			return a.BrowserDownloadURL, nil
+		}
+	}
+	return "", fmt.Errorf("no win64-lgpl-essentials build found in latest BtbN release")
+}
+
 // DownloadFFmpeg fetches a minimal static build from BtbN and caches it in
 // %APPDATA%\steam-showcase-maker\bin\.  Progress is emitted as "ffmpeg-dl" events:
-//   { pct: 0–100, mb: downloaded, total: totalMB, status: "downloading"|"extracting"|"done" }
+//   { pct: 0–100, mb: downloaded, total: totalMB, status: "locating"|"downloading"|"extracting"|"done" }
 func (a *App) DownloadFFmpeg() error {
-	const zipURL = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-lgpl-essentials_build.zip"
-
 	binDir := ffmpegBinDir()
 	if binDir == "" {
 		return fmt.Errorf("cannot determine app data directory")
@@ -245,16 +282,32 @@ func (a *App) DownloadFFmpeg() error {
 		return fmt.Errorf("create bin dir: %w", err)
 	}
 
+	// ── resolve current download URL via GitHub API ───────────────────────
+	wailsrt.EventsEmit(a.ctx, "ffmpeg-dl", map[string]interface{}{
+		"status": "locating", "pct": 0.0,
+	})
+	zipURL, err := a.btbnZipURL()
+	if err != nil {
+		return err
+	}
+
 	// ── download ──────────────────────────────────────────────────────────
 	req, err := http.NewRequestWithContext(a.ctx, http.MethodGet, zipURL, nil)
 	if err != nil {
 		return err
 	}
+	req.Header.Set("User-Agent", "steam-showcase-maker")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("download failed: %w", err)
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("download returned HTTP %d", resp.StatusCode)
+	}
+	if ct := resp.Header.Get("Content-Type"); !strings.Contains(ct, "zip") && !strings.Contains(ct, "octet-stream") && ct != "" {
+		return fmt.Errorf("unexpected content type %q — is GitHub reachable?", ct)
+	}
 
 	totalBytes := resp.ContentLength
 	totalMB := float64(totalBytes) / 1024 / 1024

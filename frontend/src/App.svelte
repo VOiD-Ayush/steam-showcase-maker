@@ -41,6 +41,7 @@
   let dlPct         = 0;
   let dlMB          = 0;
   let dlTotal       = 0;
+  let dlStatus      = '';
   let dlError       = '';
 
   const ditherHints = {
@@ -55,6 +56,7 @@
     ffmpegPath = await GetFFmpegStatus();
     const unsub  = EventsOn('progress',   (d) => { progress = d.panel; });
     const unsub2 = EventsOn('ffmpeg-dl',  (d) => {
+      if (d.status) dlStatus = d.status;
       dlPct   = d.pct   ?? dlPct;
       dlMB    = d.mb    ?? dlMB;
       dlTotal = d.total ?? dlTotal;
@@ -166,7 +168,7 @@
 
   // ── ffmpeg setup ───────────────────────────────────────
   async function downloadFFmpeg() {
-    downloading = true; dlPct = 0; dlMB = 0; dlError = '';
+    downloading = true; dlPct = 0; dlMB = 0; dlStatus = 'locating'; dlError = '';
     try {
       await DownloadFFmpeg();
       ffmpegPath = await GetFFmpegStatus();
@@ -419,12 +421,18 @@
 
             {#if downloading}
               <div class="dl-row">
-                <div class="prog-bar">
-                  <div style="width:{dlPct.toFixed(0)}%"></div>
-                </div>
-                <span class="dl-label">
-                  {dlPct.toFixed(0)}%{dlTotal > 0 ? ` · ${dlMB.toFixed(0)}/${dlTotal.toFixed(0)} MB` : ''}
-                </span>
+                {#if dlStatus === 'locating'}
+                  <span class="dl-label">Locating latest build…</span>
+                {:else if dlStatus === 'extracting'}
+                  <span class="dl-label">Extracting…</span>
+                {:else}
+                  <div class="prog-bar">
+                    <div style="width:{dlPct.toFixed(0)}%"></div>
+                  </div>
+                  <span class="dl-label">
+                    {dlPct.toFixed(0)}%{dlTotal > 0 ? ` · ${dlMB.toFixed(0)}/${dlTotal.toFixed(0)} MB` : ''}
+                  </span>
+                {/if}
               </div>
             {:else}
               <button class="btn-primary" on:click={downloadFFmpeg}>
