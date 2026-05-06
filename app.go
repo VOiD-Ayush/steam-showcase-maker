@@ -146,9 +146,12 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 	a.ffmpegPath, a.ffprobePath = findFFmpeg()
 	tmp, err := os.MkdirTemp("", "steam-showcase-*")
-	if err == nil {
-		a.tempDir = tmp
+	if err != nil {
+		// Fallback: use a subfolder in the system temp dir
+		tmp = filepath.Join(os.TempDir(), "steam-showcase-maker")
+		_ = os.MkdirAll(tmp, 0755)
 	}
+	a.tempDir = tmp
 }
 
 func (a *App) shutdown(ctx context.Context) {
@@ -436,7 +439,11 @@ func (a *App) SelectOutputDir() (string, error) {
 
 func (a *App) GetVideoInfo(videoPath string) (VideoInfo, error) {
 	if a.ffprobePath == "" {
-		return VideoInfo{}, fmt.Errorf("ffprobe not found")
+		hint := ""
+		if a.ffmpegPath != "" {
+			hint = fmt.Sprintf(" — make sure ffprobe.exe is in the same folder as ffmpeg.exe (%s)", filepath.Dir(a.ffmpegPath))
+		}
+		return VideoInfo{}, fmt.Errorf("ffprobe not found%s", hint)
 	}
 	cmd := newCmd(a.ctx, a.ffprobePath,
 		"-v", "quiet", "-print_format", "json",

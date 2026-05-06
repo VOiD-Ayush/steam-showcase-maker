@@ -34,8 +34,8 @@ func main() {
 		Title:     "Steam Showcase Maker",
 		Width:     1280,
 		Height:    820,
-		MinWidth:  960,
-		MinHeight: 640,
+		MinWidth:  800,
+		MinHeight: 600,
 		AssetServer: &assetserver.Options{
 			Assets:     assets,
 			Middleware: assetserver.Middleware(localFileMiddleware),

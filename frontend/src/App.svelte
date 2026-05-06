@@ -219,8 +219,8 @@
     return (oW * oH * fr * (colors / 256) * cf * (monochrome ? 0.6 : 1)) / (1024 * 1024);
   })();
 
-  // raise start thumb z-index when near right edge so it stays draggable
-  $: zStart = startPct > 80 ? 5 : 3;
+  // raise start thumb above end thumb when they are close or overlapping
+  $: zStart = (startPct >= endPct - 3 || startPct > 80) ? 5 : 3;
 </script>
 
 <!-- ═══════════════════════════════════════════════════ -->
@@ -584,9 +584,9 @@
   .dropzone:not(.has-video):hover { border-color: var(--accent); }
   .dropzone.drag-over {
     border-color: var(--accent); border-style: solid;
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent);
+    box-shadow: 0 0 0 3px rgba(26, 159, 255, 0.25);
   }
-  .dropzone video { width: 100%; display: block; max-height: 160px; object-fit: cover; }
+  .dropzone video { width: 100%; display: block; max-height: 160px; object-fit: contain; background: #000; }
   .drop-hint { text-align: center; padding: 16px; color: var(--text-dim); }
   .drop-icon { font-size: 26px; margin-bottom: 6px; color: var(--accent); }
   .sub { font-size: 11px; margin-top: 4px; }
@@ -611,7 +611,7 @@
 
   /* ── dual range slider ─────────────────────────────── */
   .range-slider {
-    position: relative; height: 20px;
+    position: relative; height: 24px;
     display: flex; align-items: center;
     margin: 4px 0;
   }
@@ -625,21 +625,22 @@
   }
   .thumb {
     position: absolute; width: 100%;
-    height: 4px; background: transparent;
+    height: 24px; background: transparent;
     pointer-events: none;
     -webkit-appearance: none; margin: 0; outline: none;
   }
   .thumb::-webkit-slider-thumb {
     -webkit-appearance: none;
     pointer-events: all;
-    width: 16px; height: 16px;
+    width: 18px; height: 18px;
     border-radius: 50%;
     background: var(--accent);
     border: 2px solid var(--bg3);
-    cursor: pointer;
+    cursor: grab;
     box-shadow: 0 1px 4px rgba(0,0,0,0.5);
   }
   .thumb::-webkit-slider-thumb:hover { background: var(--accent2); }
+  .thumb::-webkit-slider-thumb:active { cursor: grabbing; }
 
   .time-labels {
     display: flex; justify-content: space-between; align-items: center;
